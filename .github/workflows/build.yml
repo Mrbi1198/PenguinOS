@@ -81,7 +81,12 @@ jobs:
           cat << 'EOF' > rclone.conf
           ${{ secrets.RCLONE_DRIVE_CONFIG }}
           EOF
-          
+      - name: Sua loi Rclone Google Drive
+        run: |
+          mkdir -p ~/.config/rclone
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          ${{ secrets.RCLONE_TOKEN_PATH }}
+          EOF
       - name: Upload ROM...
         run: |
           python notify.py upload "${{ github.repository }}" "${{ inputs.input_url }}" "xiaomi" "${{ inputs.builder_name }}" "${{ inputs.builder_id }}"
