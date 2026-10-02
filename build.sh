@@ -1,4 +1,4 @@
-baserom="$1"
+Baserom="$1"
 repo_name="$2"
 prefix_id="$3"
 builder_name="$4"
@@ -35,9 +35,9 @@ mkdir -p $work_dir/out
 python3 $work_dir/notify.py download "$repo_name" "$baserom" "$prefix_id" "$builder_name" "$builder_id"
 source "$work_dir/bin/ddevice/getROM.sh" "$baserom"
 
-# ==================== CHUẨN HÓA TÊN FILE ZIP ====================
+# ==================== CHUẨN HÓA TÊN FILE ZIP & TGZ ====================
 if [[ ! -f "$baserom" ]]; then
-    found_zip=$(ls -S $work_dir/*.zip 2>/dev/null | head -n 1)
+    found_zip=$(ls -S $work_dir/*.zip $work_dir/*.tgz 2>/dev/null | head -n 1)
     if [[ -n "$found_zip" && -f "$found_zip" ]]; then
         baserom="$found_zip"
     else
@@ -52,7 +52,14 @@ fi
 # ================================================================
 
 python3 $work_dir/notify.py unpack "$repo_name" "$baserom" "$prefix_id" "$builder_name" "$builder_id"
-if unzip -l "${baserom}" | grep -q "payload.bin"; then
+
+if [[ "$baserom" == *.tgz ]]; then
+    baserom_type="fastboot"
+    echo $baserom_type > $work_dir/bin/ddevice/romtype.txt
+    unpack "Found Fastboot .tgz file"
+    super_list="vendor mi_ext odm odm_dlkm system system_dlkm vendor_dlkm product product_dlkm system_ext"
+    unpack "ROM validation passed."
+elif unzip -l "${baserom}" | grep -q "payload.bin"; then
     baserom_type="payload"
     echo $baserom_type > $work_dir/bin/ddevice/romtype.txt
     unpack "Found payload.bin file"
@@ -80,7 +87,16 @@ unpack "Files cleaned up."
 mkdir -p build/baserom/images/
 
 # Extract partitions
-if [[ ${baserom_type} == 'payload' ]]; then
+if [[ ${baserom_type} == 'fastboot' ]]; then
+    unpack "Extracting files from Fastboot ROM (.tgz)..."
+    tar -xzf "${baserom}" -C build/baserom/ >/dev/null 2>&1 || error "Extracting .tgz error"
+    
+    fastboot_subfolder=$(find build/baserom/ -maxdepth 2 -type d -name "images" | head -n 1)
+    if [[ -n "$fastboot_subfolder" ]]; then
+        mv ${fastboot_subfolder}/* build/baserom/images/ 2>/dev/null || true
+    fi
+    unpack "Fastboot .tgz extracted."
+elif [[ ${baserom_type} == 'payload' ]]; then
     unpack "Extracting files payload.bin..."
     unzip "${baserom}" payload.bin -d build/baserom >/dev/null 2>&1 || error "Extracting payload.bin error"
     unpack "File payload.bin extracted."
@@ -151,7 +167,7 @@ for part in ${super_list}; do
     fi
 done
 
-# ==================== FIX TÊN CODENAME THIẾT BỊ ====================
+# ==================== FIX TÊN CODENAME THIẾT BỊ (UNIVERSAL) ====================
 detected_codename=""
 
 # Ưu tiên 1: Lấy từ product/etc/build.prop hoặc vendor (chứa codename máy thật, tránh chữ missi của system)
@@ -161,9 +177,10 @@ elif [ -f "$work_dir/build/baserom/images/vendor/build.prop" ]; then
     detected_codename=$(grep -m1 "^ro.product.vendor.device=" "$work_dir/build/baserom/images/vendor/build.prop" | cut -d= -f2 | tr '[:upper:]' '[:lower:]')
 fi
 
-# Ưu tiên 2: Nếu lấy ra missi hoặc rỗng thì bóc thẳng từ chuỗi baserom/tên file zip
+# Ưu tiên 2: Bóc tách tên mã máy thông minh từ tên file ROM (Hỗ trợ TẤT CẢ các máy Xiaomi)
 if [[ -z "$detected_codename" || "$detected_codename" == "missi" ]]; then
-    detected_codename=$(echo "$baserom" | grep -o -i -E "(peridot|onyx|garnet|corot|duchamp|manet|houji|shennong)" | head -n 1 | tr '[:upper:]' '[:lower:]')
+    clean_name=$(basename "${baserom%%\?*}")
+    detected_codename=$(echo "$clean_name" | cut -d'_' -f1 | tr '[:upper:]' '[:lower:]')
 fi
 
 if [ -n "$detected_codename" ]; then
@@ -172,7 +189,7 @@ fi
 
 echo "$device_f" > $work_dir/bin/ddevice/device_f.txt
 getvar=$(cat $work_dir/bin/ddevice/device_f.txt)
-# ===================================================================
+# ===================================================================================
 
 rm -rf config
 if [ -f "$baserom" ]; then rm -rf "$baserom"; fi
