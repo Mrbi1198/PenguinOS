@@ -95,6 +95,15 @@ if [[ ${baserom_type} == 'fastboot' ]]; then
     if [[ -n "$fastboot_subfolder" ]]; then
         mv ${fastboot_subfolder}/* build/baserom/images/ 2>/dev/null || true
     fi
+    
+    unpack "Converting Fastboot super.img..."
+    if ls build/baserom/images/super.img.* 1> /dev/null 2>&1; then
+        simg2img build/baserom/images/super.img.* build/baserom/super.img 2>/dev/null
+        rm -f build/baserom/images/super.img.*
+    elif [ -f build/baserom/images/super.img ]; then
+        mv build/baserom/images/super.img build/baserom/super_sparse.img
+        simg2img build/baserom/super_sparse.img build/baserom/super.img 2>/dev/null || mv build/baserom/super_sparse.img build/baserom/super.img
+    fi
     unpack "Fastboot .tgz extracted."
 elif [[ ${baserom_type} == 'payload' ]]; then
     unpack "Extracting files payload.bin..."
@@ -147,7 +156,7 @@ elif [[ ${baserom_type} == 'br' ]]; then
         python3 $work_dir/bin/Linux/x86_64/sdat2img.py build/baserom/$brotlipart.transfer.list build/baserom/$brotlipart.new.dat build/baserom/images/$brotlipart.img >/dev/null 2>&1
         rm -rf build/baserom/$brotlipart.new.dat* build/baserom/$brotlipart.transfer.list build/baserom/$brotlipart.patch.*
     done
-elif [[ ${is_base_rom_eu} == true ]]; then
+elif [[ ${is_base_rom_eu} == true || ${baserom_type} == 'fastboot' ]]; then
     unpack "Unpacking BASEROM [super.img]"
     python3 bin/lpunpack.py build/baserom/super.img build/baserom/images/ >/dev/null 2>&1
     
