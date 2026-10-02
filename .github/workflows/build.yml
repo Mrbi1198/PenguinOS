@@ -1,4 +1,4 @@
-name: PenguinOS ROM Build
+Name: PenguinOS ROM Build
 
 on:
   workflow_dispatch:
@@ -78,15 +78,11 @@ jobs:
 
       - name: Setup Rclone...
         run: |
-          cat << 'EOF' > rclone.conf
-          ${{ secrets.RCLONE_DRIVE_CONFIG }}
-          EOF
-      - name: Sua loi Rclone Google Drive
-        run: |
           mkdir -p ~/.config/rclone
           cat << 'EOF' > ~/.config/rclone/rclone.conf
           ${{ secrets.RCLONE_TOKEN_PATH }}
           EOF
+
       - name: Upload ROM...
         run: |
           python notify.py upload "${{ github.repository }}" "${{ inputs.input_url }}" "xiaomi" "${{ inputs.builder_name }}" "${{ inputs.builder_id }}"
@@ -101,10 +97,10 @@ jobs:
         if: failure()
         run: |
           python notify.py fail "${{ github.repository }}" "${{ inputs.input_url }}" "xiaomi" "${{ inputs.builder_name }}" "${{ inputs.builder_id }}"
+          
       - name: Luu ROM vao GitHub
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: TuyenTap-ROM-Cua-Toi
           path: out/*.zip
-          
