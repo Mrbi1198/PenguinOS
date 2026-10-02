@@ -1,4 +1,4 @@
-Name: PenguinOS ROM Build
+name: PenguinOS ROM Build
 
 on:
   workflow_dispatch:
@@ -104,3 +104,4 @@ jobs:
         with:
           name: TuyenTap-ROM-Cua-Toi
           path: out/*.zip
+          
